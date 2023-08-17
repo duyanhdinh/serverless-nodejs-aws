@@ -1,0 +1,46 @@
+service: serverless-nodejs-aws
+frameworkVersion: '3'
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  timeout: 30
+  region: ap-southeast-1 #aws-region
+  stage: prod
+  environment:
+    ENV_AWS_REGION: ${env:ENV_AWS_REGION}
+
+plugins:
+  - serverless-dotenv-plugin
+
+package:
+  individually: true
+  patterns:
+    - '!node_modules/**'
+    - '!layers/**'
+    - '!.github/**'
+    - '!serverless/**'
+    - '!src/**'
+
+custom:
+  const:
+    PROJECT_NAME: pj_${env:STAGE}
+  project:
+    vpc:
+      securityGroupIds:
+        - sg-xxx
+      subnetIds:
+        - subnet-xxx
+
+
+# Lambda Layers
+layers:
+  NodeLayer:
+    path: layers/node
+
+functions:
+  - ${file(./serverless/functions/demo.func.yml)}
+
+resources:
+  - ${file(./serverless/resources/sqs.resource.yml)}

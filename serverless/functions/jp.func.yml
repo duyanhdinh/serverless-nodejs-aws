@@ -1,0 +1,76 @@
+  jp_db--seed:
+    name: ${self:custom.const.PROJECT_JP_NAME}_db_seed
+    handler: src/db/seed.handlerJp
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/db/seed.js'
+    vpc: ${self:custom.project.vpc}
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+
+  jp_sheet--get-article-data:
+    name: ${self:custom.const.PROJECT_JP_NAME}_sheet_get_article_data
+    handler: src/sheets/get/article/index.handler
+    package:
+      patterns:
+        - 'services/google/**'
+        - 'src/sheets/get/article/**'
+    environment:
+      GOOGLE_AUTH_CERTS: ${env:GOOGLE_AUTH_CERTS}
+      SPREADSHEET_ID: ${env:SPREADSHEET_ID_JP}
+      queue_handle_article: !Ref CmnHandleArticleData
+      queue_update_sitemap: !Ref JpS3UpdateSitemap
+      web_type: jp
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+    events:
+      - schedule: cron(40 */8 * * ? *)
+
+  jp_db--store-article-data:
+    name: ${self:custom.const.PROJECT_JP_NAME}_db_store_article_data
+    handler: src/db/store/article/index.handler
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/db/store/article/**'
+    environment:
+      WEB_HOST: ${env:WEB_HOST_JP}
+      DATABASE_URL: ${env:PRISMA_JP_DATABASE_URL}
+    vpc: ${self:custom.project.vpc}
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+
+  jp_s3--get-sitemap:
+    name: ${self:custom.const.PROJECT_JP_NAME}_s3_get_sitemap
+    handler: src/db/get/sitemap.handler
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/db/get/sitemap.js'
+    environment:
+      WEB_HOST: ${env:WEB_HOST_JP}
+      DATABASE_URL: ${env:PRISMA_JP_DATABASE_URL}
+    vpc: ${self:custom.project.vpc}
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+
+  jp_s3--update-sitemap:
+    name: ${self:custom.const.PROJECT_JP_NAME}_s3_update_sitemap
+    handler: src/s3/update/sitemap.handler
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/s3/update/sitemap.js'
+    environment:
+      web_type: jp
+      AWS_S3_SITEMAP_BUCKET: ${env:AWS_S3_SITEMAP_BUCKET}
+      SITEMAP_DATA_FILENAME: ${env:SITEMAP_DATA_FILENAME_JP}
+      func_name_get_sitemap: ${self:custom.const.PROJECT_JP_NAME}_s3_get_sitemap
+      func_name_web_rebuild: ${self:custom.const.PROJECT_COMMON_NAME}_web_rebuild
+    events:
+      - sqs:
+          arn: { Fn::GetAtt: [ JpS3UpdateSitemap, Arn ] }
+          enabled: true
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer

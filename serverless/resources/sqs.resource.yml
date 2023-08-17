@@ -1,0 +1,5 @@
+Resources:
+  DemoSqs:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: ${self:custom.const.PROJECT_NAME}_demo_sqs

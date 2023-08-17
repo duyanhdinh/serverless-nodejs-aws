@@ -1,0 +1,225 @@
+  en_db--seed:
+    name: ${self:custom.const.PROJECT_NAME}_db_seed
+    handler: src/db/seed.handler
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/db/seed.js'
+    vpc: ${self:custom.project.vpc}
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+
+  en_sheet--get-article-data:
+    name: ${self:custom.const.PROJECT_NAME}_sheet_get_article_data
+    handler: src/sheets/get/article/index.handler
+    package:
+      patterns:
+        - 'services/google/**'
+        - 'src/sheets/get/article/**'
+    environment:
+      GOOGLE_AUTH_CERTS: ${env:GOOGLE_AUTH_CERTS}
+      SPREADSHEET_ID: ${env:SPREADSHEET_ID}
+      queue_handle_article: !Ref CmnHandleArticleData
+      queue_update_sitemap: !Ref EnS3UpdateSitemap
+      web_type: en
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+    events:
+      - schedule: cron(10 */8 * * ? *)
+
+  en_db--store-article-data:
+    name: ${self:custom.const.PROJECT_NAME}_db_store_article_data
+    handler: src/db/store/article/index.handler
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/db/store/article/**'
+    environment:
+      WEB_HOST: ${env:WEB_HOST}
+      DATABASE_URL: ${env:PRISMA_DATABASE_URL}
+    vpc: ${self:custom.project.vpc}
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+
+#  db--store-tag-data:
+#    name: ${self:custom.const.PROJECT_NAME}_db_store_tag_data
+#    handler: src/db/store/tag/index.handler
+#    package:
+#      patterns:
+#        - 'services/db/**'
+#        - 'src/db/store/tag/**'
+#    events:
+#      - sqs:
+#          arn: { Fn::GetAtt: [ DbStoreTagSheetData, Arn ] }
+#          enabled: true
+#    vpc: ${self:custom.project.vpc}
+#    layers:
+#      - !Ref FiyhNodeLayerLambdaLayer
+#
+#  sheet--get-tag-property-data:
+#    name: ${self:custom.const.PROJECT_NAME}_sheet_get_tag_property_data
+#    handler: src/sheets/get/tag/relation-property.handler
+#    package:
+#      patterns:
+#        - 'services/google/**'
+#        - 'src/sheets/get/tag/**'
+#    environment:
+#      GOOGLE_AUTH_CERTS: ${env:GOOGLE_AUTH_CERTS}
+#      SPREADSHEET_ID: ${env:SPREADSHEET_ID}
+#      func_name_store_tag_property_sheet_data: ${self:custom.const.PROJECT_NAME}_db_store_tag_property_data
+#      queue_sheet_update: !Ref SheetStoreUpdate
+#    layers:
+#      - !Ref FiyhNodeLayerLambdaLayer
+#    events:
+#      - schedule: cron(15 10 * * ? *)
+#
+#  db--store-tag-property-data:
+#    name: ${self:custom.const.PROJECT_NAME}_db_store_tag_property_data
+#    handler: src/db/store/tag/relation-property.handler
+#    package:
+#      patterns:
+#        - 'services/db/**'
+#        - 'src/db/store/tag/**'
+#    events:
+#      - sqs:
+#          arn: { Fn::GetAtt: [ DbStoreTagPropertySheetData, Arn ] }
+#          enabled: true
+#    vpc: ${self:custom.project.vpc}
+#    layers:
+#      - !Ref FiyhNodeLayerLambdaLayer
+
+  en_s3--get-sitemap:
+    name: ${self:custom.const.PROJECT_NAME}_s3_get_sitemap
+    handler: src/db/get/sitemap.handler
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/db/get/sitemap.js'
+    environment:
+      WEB_HOST: ${env:WEB_HOST}
+      DATABASE_URL: ${env:PRISMA_DATABASE_URL}
+    vpc: ${self:custom.project.vpc}
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+
+  en_s3--update-sitemap:
+    name: ${self:custom.const.PROJECT_NAME}_s3_update_sitemap
+    handler: src/s3/update/sitemap.handler
+    package:
+      patterns:
+        - 'services/db/**'
+        - 'src/s3/update/sitemap.js'
+    environment:
+      web_type: en
+      AWS_S3_SITEMAP_BUCKET: ${env:AWS_S3_SITEMAP_BUCKET}
+      SITEMAP_DATA_FILENAME: ${env:SITEMAP_DATA_FILENAME}
+      func_name_get_sitemap: ${self:custom.const.PROJECT_NAME}_s3_get_sitemap
+      func_name_web_rebuild: ${self:custom.const.PROJECT_COMMON_NAME}_web_rebuild
+    events:
+      - sqs:
+          arn: { Fn::GetAtt: [ EnS3UpdateSitemap, Arn ] }
+          enabled: true
+    layers:
+      - !Ref FiyhNodeLayerLambdaLayer
+
+
+  #  sheet--check-request-crawl-item-amz:
+  #  sheet--check-request-crawl-item-amz:
+  #    name: ${self:custom.const.PROJECT_NAME}_sheet_check_request_crawl_item_amz
+  #    handler: src/sheets/request/crawl/amazon/item.handler
+  #    package:
+  #      patterns:
+  #        - 'services/google/**'
+  #        - 'src/sheets/request/crawl/amazon/**'
+  #    environment:
+  #      GOOGLE_AUTH_CERTS: ${env:GOOGLE_AUTH_CERTS}
+  #      SPREADSHEET_ID: ${env:SPREADSHEET_ID}
+  #      queue_crawl_item_amz: !Ref CrawlItemAMZ
+  #    layers:
+  #      - !Ref FiyhNodeLayerLambdaLayer
+  #    events:
+  #      - schedule: cron(0 */8 * * ? *)
+  #
+  #  crawl--item-amz:
+  #    name: ${self:custom.const.PROJECT_NAME}_crawl_item_amz
+  #    handler: src/crawl/item/amz/index.handler
+  #    package:
+  #      patterns:
+  #        - 'services/amz/**'
+  #        - 'src/crawl/item/amz/**'
+  #    environment:
+  #      queue_sheet_update: !Ref SheetStoreUpdate
+  #      func_name_store_item_amz: ${self:custom.const.PROJECT_NAME}_db_store_item_amz
+  #    layers:
+  #      - !Ref FiyhNodeLayerLambdaLayer
+  #    events:
+  #      - sqs:
+  #          arn: { Fn::GetAtt: [ CrawlItemAMZ, Arn ] }
+  #          enabled: true
+  #
+  #  db--store-item-amz:
+  #    name: ${self:custom.const.PROJECT_NAME}_db_store_item_amz
+  #    handler: src/db/store/item/amz/index.handler
+  #    package:
+  #      patterns:
+  #        - 'services/db/**'
+  #        - 'src/db/store/item/amz/**'
+  #    events:
+  #      - sqs:
+  #          arn: { Fn::GetAtt: [ DbStoreItemAmz, Arn ] }
+  #          enabled: true
+  #    vpc: ${self:custom.project.vpc}
+  #    layers:
+  #      - !Ref FiyhNodeLayerLambdaLayer
+
+  #  sheet--check-request-crawl-data:
+  #    name: ${self:custom.const.PROJECT_NAME}_sheet_check_request_crawl_data
+  #    handler: src/sheets/request/crawl/check.handler
+  #    package:
+  #      patterns:
+  #        - 'services/google/**'
+  #        - 'src/sheets/request/crawl/**'
+  #    environment:
+  #      GOOGLE_AUTH_CERTS: ${env:GOOGLE_AUTH_CERTS}
+  #      SPREADSHEET_ID: ${env:SPREADSHEET_ID}
+  #      queue_crawl_item_ebay: !Ref CrawlItemEbay
+  #    layers:
+  #      - !Ref FiyhNodeLayerLambdaLayer
+  #    events:
+  #      - schedule: cron(15 */8 * * ? *)
+
+  #  crawl--item-ebay:
+  #    name: ${self:custom.const.PROJECT_NAME}_crawl_item_ebay
+  #    handler: src/crawl/item/ebay.handler
+  #    package:
+  #      patterns:
+  #        - 'services/ebay/**'
+  #        - 'src/crawl/item/ebay**'
+  #    environment:
+  #      EBAY_API: ${env:EBAY_API}
+  #      EBAY_API_MODE: ${env:EBAY_API_MODE}
+  #      EBAY_CLIENT_ID: ${env:EBAY_CLIENT_ID}
+  #      EBAY_CLIENT_SECRET: ${env:EBAY_CLIENT_SECRET}
+  #      queue_sheet_update: !Ref SheetStoreUpdate
+  #      func_name_store_item_ebay: ${self:custom.const.PROJECT_NAME}_db_store_item_ebay
+  #    layers:
+  #      - !Ref FiyhNodeLayerLambdaLayer
+  #    events:
+  #      - sqs:
+  #          arn: { Fn::GetAtt: [ CrawlItemEbay, Arn ] }
+  #          enabled: true
+
+  #  db--store-item-ebay:
+  #    name: ${self:custom.const.PROJECT_NAME}_db_store_item_ebay
+  #    handler: src/db/store/item/item-ebay.handler
+  #    package:
+  #      patterns:
+  #        - 'services/db/**'
+  #        - 'src/db/store/item/**'
+  #    events:
+  #      - sqs:
+  #          arn: { Fn::GetAtt: [ DbStoreItemEbay, Arn ] }
+  #          enabled: true
+  #    vpc: ${self:custom.project.vpc}
+  #    layers:
+  #      - !Ref FiyhNodeLayerLambdaLayer

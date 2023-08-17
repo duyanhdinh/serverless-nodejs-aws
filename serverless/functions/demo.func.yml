@@ -1,0 +1,16 @@
+  fn_demo:
+    name: ${self:custom.const.PROJECT_NAME}_fn_demo
+    handler: src/demo/index.handel
+    package:
+      patterns:
+        - 'src/demo/index.js'
+    environment:
+      ENVI: ${env:ENVI}
+    vpc: ${self:custom.project.vpc}
+    events:
+      - sqs:
+          arn: { Fn::GetAtt: [ DemoSqs, Arn ] }
+          enabled: true
+      - schedule: cron(10 */8 * * ? *)
+    layers:
+      - !Ref NodeLayerLambdaLayer
